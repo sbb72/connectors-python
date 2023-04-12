@@ -85,7 +85,6 @@ class MSSQLDataSource(GenericBaseDataSource):
                     "label": "Schema",
                     "order": 9,
                     "type": "str",
-                    "value": "dbo",
                 },
                 "ssl_enabled": {
                     "display": "toggle",
@@ -99,7 +98,6 @@ class MSSQLDataSource(GenericBaseDataSource):
                     "label": "Certificate data",
                     "order": 11,
                     "type": "str",
-                    "value": "",
                 },
                 "validate_host": {
                     "label": "Validate host",

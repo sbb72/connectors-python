@@ -37,7 +37,7 @@ DEFAULT_CONFIGURATION = {
     "type": "str",
     "ui_restrictions": [],
     "validations": [],
-    "value": "",
+    "value": None,
 }
 
 
@@ -347,7 +347,7 @@ class BaseDataSource:
             )
 
         self.configuration = configuration
-        self.configuration.set_defaults(self.get_default_configuration())
+        self.configuration.set_defaults(self.get_simple_configuration())
 
     def __str__(self):
         return f"Datasource `{self.__class__.name}`"

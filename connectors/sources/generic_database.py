@@ -35,6 +35,9 @@ def configured_tables(tables):
     def table_filter(table):
         return table is not None and len(table) > 0
 
+    if tables is None:
+        return []
+
     return (
         list(
             filter(
@@ -131,33 +134,28 @@ class GenericBaseDataSource(BaseDataSource):
                 "label": "Host",
                 "order": 1,
                 "type": "str",
-                "value": "127.0.0.1",
             },
             "port": {
                 "display": "numeric",
                 "label": "Port",
                 "order": 2,
                 "type": "int",
-                "value": 9090,
             },
             "username": {
                 "label": "Username",
                 "order": 3,
                 "type": "str",
-                "value": "admin",
             },
             "password": {
                 "label": "Password",
                 "order": 4,
                 "sensitive": True,
                 "type": "str",
-                "value": "Password_123",
             },
             "database": {
                 "label": "Database",
                 "order": 5,
                 "type": "str",
-                "value": "xe",
             },
             "tables": {
                 "display": "textarea",
@@ -165,7 +163,6 @@ class GenericBaseDataSource(BaseDataSource):
                 "options": [],
                 "order": 6,
                 "type": "list",
-                "value": WILDCARD,
             },
             "fetch_size": {
                 "default_value": DEFAULT_FETCH_SIZE,
@@ -175,7 +172,6 @@ class GenericBaseDataSource(BaseDataSource):
                 "required": False,
                 "type": "int",
                 "ui_restrictions": ["advanced"],
-                "value": DEFAULT_FETCH_SIZE,
             },
             "retry_count": {
                 "default_value": DEFAULT_RETRY_COUNT,
@@ -185,7 +181,6 @@ class GenericBaseDataSource(BaseDataSource):
                 "required": False,
                 "type": "int",
                 "ui_restrictions": ["advanced"],
-                "value": DEFAULT_RETRY_COUNT,
             },
         }
 
