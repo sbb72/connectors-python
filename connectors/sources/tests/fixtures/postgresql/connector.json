@@ -79,14 +79,14 @@
                 "ssl_enabled": {
                         "display": "toggle",
                         "label": "Enable SSL verification",
-                        "order": 10,
+                        "order": 9,
                         "type": "bool",
                         "value": false
                 },
                 "ssl_ca": {
                         "depends_on": [{"field": "ssl_enabled", "value": true}],
                         "label": "Certificate Data",
-                        "order": 11,
+                        "order": 10,
                         "type": "str",
                         "value": null
                 }
