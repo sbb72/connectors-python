@@ -312,6 +312,9 @@ class SyncJob(ESDocument):
             doc["metadata"] = connector_metadata
         await self.index.update(doc_id=self.id, doc=doc)
 
+    def _prefix_msg(self, msg):
+        return f"[Sync Job id: {self.id}, connector id: {self.connector_id}, index name: {self.index_name}] {msg}"
+
 
 class Filtering:
     DEFAULT_DOMAIN = "DEFAULT"
@@ -770,6 +773,9 @@ class Connector(ESDocument):
             if_primary_term=self._primary_term,
         )
         await self.reload()
+
+    def _prefix_msg(self, msg):
+        return f"[Connector id: {self.id}, index name: {self.index_name}] {msg}"
 
 
 IDLE_JOBS_THRESHOLD = 60  # 60 seconds
