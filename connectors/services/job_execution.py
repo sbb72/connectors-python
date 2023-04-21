@@ -43,11 +43,11 @@ class JobExecutionService(BaseService):
         try:
             connector = await self.connector_index.fetch_by_id(sync_job.connector_id)
         except DocumentNotFoundError:
-            sync_job.error("Couldn't find connector")
+            sync_job.log_error("Couldn't find connector")
             return
 
         if connector.last_sync_status == JobStatus.IN_PROGRESS:
-            sync_job.debug("Connector is still syncing, skip the job...")
+            sync_job.log_debug("Connector is still syncing, skip the job...")
             return
 
         sync_job_runner = SyncJobRunner(
