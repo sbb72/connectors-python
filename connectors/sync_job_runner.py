@@ -205,7 +205,7 @@ class SyncJobRunner:
             )
 
         self.sync_job.log_info(
-            f"[{self.sync_job.id}] Sync done: {ingestion_stats.get('indexed_document_count')} indexed, "
+            f"Sync done: {ingestion_stats.get('indexed_document_count')} indexed, "
             f"{ingestion_stats.get('deleted_document_count')} deleted. "
             f"({int(time.time() - self._start_time)} seconds)"  # pyright: ignore
         )
