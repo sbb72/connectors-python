@@ -340,7 +340,8 @@ class BaseDataSource:
     name = None
     service_type = None
 
-    def __init__(self, configuration):
+    def __init__(self, configuration, logger_=None):
+        self._logger = logger_ or logger
         if not isinstance(configuration, DataSourceConfiguration):
             raise TypeError(
                 f"Configuration expected type is {DataSourceConfiguration.__name__}, actual: {type(configuration).__name__}."
