@@ -116,7 +116,9 @@ class SyncJobRunner:
                 is_connectors_index=True,
             )
 
-            self.elastic_server = SyncOrchestrator(self.es_config)
+            self.elastic_server = SyncOrchestrator(
+                elastic_config=self.es_config, logger_=self.sync_job.logger
+            )
 
             self.sync_job.log_debug("Preparing the content index")
             await self.elastic_server.prepare_content_index(

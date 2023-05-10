@@ -82,6 +82,7 @@ class Sink:
         pipeline,
         chunk_mem_size,
         max_concurrency,
+        logger_=None,
     ):
         self.client = client
         self.queue = queue
@@ -96,6 +97,7 @@ class Sink:
         self.indexed_document_count = 0
         self.indexed_document_volume = 0
         self.deleted_document_count = 0
+        self._logger = logger_ or logger
 
     def _bulk_op(self, doc, operation=OP_INDEX):
         doc_id = doc["_id"]
@@ -117,8 +119,8 @@ class Sink:
         # TODO: treat result to retry errors like in async_streaming_bulk
         task_num = len(self.bulk_tasks)
 
-        if logger.isEnabledFor(logging.DEBUG):
-            logger.debug(
+        if self._logger.isEnabledFor(logging.DEBUG):
+            self._logger.debug(
                 f"Task {task_num} - Sending a batch of {len(operations)} ops -- {get_mb_size(operations)}MiB"
             )
         start = time.time()
@@ -131,7 +133,9 @@ class Sink:
                 for item in res["items"]:
                     for op, data in item.items():
                         if "error" in data:
-                            logger.error(f"operation {op} failed, {data['error']}")
+                            self._logger.error(
+                                f"operation {op} failed, {data['error']}"
+                            )
                             raise Exception(data["error"]["reason"])
 
             self._populate_stats(stats, res)
@@ -154,7 +158,7 @@ class Sink:
         )
         self.deleted_document_count += len(stats[OP_DELETE])
 
-        logger.debug(
+        self._logger.debug(
             f"Sink stats - no. of docs indexed: {self.indexed_document_count}, volume of docs indexed: {round(self.indexed_document_volume)} bytes, no. of docs deleted: {self.deleted_document_count}"
         )
 
@@ -162,7 +166,7 @@ class Sink:
         try:
             await self._run()
         except asyncio.CancelledError:
-            logger.info("Task is canceled, stop Sink...")
+            self._logger.info("Task is canceled, stop Sink...")
             raise
 
     async def _run(self):
@@ -250,6 +254,7 @@ class Extractor:
         content_extraction_enabled=True,
         display_every=DEFAULT_DISPLAY_EVERY,
         concurrent_downloads=DEFAULT_CONCURRENT_DOWNLOADS,
+        logger_=None,
     ):
         if filter_ is None:
             filter_ = Filter()
@@ -272,6 +277,7 @@ class Extractor:
         self.content_extraction_enabled = content_extraction_enabled
         self.display_every = display_every
         self.concurrent_downloads = concurrent_downloads
+        self._logger = logger_ or logger
 
     def __str__(self):
         return (
@@ -292,7 +298,7 @@ class Extractor:
 
         300,000 ids will be around 50MiB
         """
-        logger.debug(f"Scanning existing index {self.index}")
+        self._logger.debug(f"Scanning existing index {self.index}")
         try:
             await self.client.indices.get(index=self.index)
         except ElasticNotFoundError:
@@ -329,7 +335,7 @@ class Extractor:
         try:
             await self.get_docs(generator)
         except asyncio.CancelledError:
-            logger.info("Task is canceled, stop Extractor...")
+            self._logger.info("Task is canceled, stop Extractor...")
             raise
 
     async def get_docs(self, generator):
@@ -338,17 +344,19 @@ class Extractor:
         A document might be discarded if its timestamp has not changed.
         Extraction happens in a separate task, when a document contains files.
         """
-        logger.info("Starting doc lookups")
+        self._logger.info("Starting doc lookups")
         self.sync_runs = True
 
         start = time.time()
         existing_ids = {k: v async for (k, v) in self._get_existing_ids()}
-        logger.debug(
+        self._logger.debug(
             f"Found {len(existing_ids)} docs in {self.index} (duration "
             f"{int(time.time() - start)} seconds) "
         )
-        if logger.isEnabledFor(logging.DEBUG):
-            logger.debug(f"Size of ids in memory is {get_mb_size(existing_ids)}MiB")
+        if self._logger.isEnabledFor(logging.DEBUG):
+            self._logger.debug(
+                f"Size of ids in memory is {get_mb_size(existing_ids)}MiB"
+            )
 
         count = 0
         lazy_downloads = ConcurrentTasks(self.concurrent_downloads)
@@ -357,7 +365,7 @@ class Extractor:
                 doc, lazy_download = doc
                 count += 1
                 if count % self.display_every == 0:
-                    logger.info(str(self))
+                    self._logger.info(str(self))
 
                 doc_id = doc["id"] = doc.pop("_id")
 
@@ -414,7 +422,7 @@ class Extractor:
 
                 await asyncio.sleep(0)
         except Exception as e:
-            logger.critical("The document fetcher failed", exc_info=True)
+            self._logger.critical("The document fetcher failed", exc_info=True)
             await self.queue.put("FETCH_ERROR")
             self.fetch_error = e
             return
@@ -426,7 +434,7 @@ class Extractor:
         # returned by the backend.
         #
         # Since we popped out every seen doc, existing_ids has now the ids to delete
-        logger.debug(f"Delete {len(existing_ids)} docs from Elasticsearch")
+        self._logger.debug(f"Delete {len(existing_ids)} docs from Elasticsearch")
         for doc_id in existing_ids.keys():
             await self.queue.put(
                 {
@@ -463,8 +471,9 @@ class SyncOrchestrator(ESClient):
     - once they are both over, returns totals
     """
 
-    def __init__(self, elastic_config):
-        logger.debug(f"SyncOrchestrator connecting to {elastic_config['host']}")
+    def __init__(self, elastic_config, logger_=None):
+        self._logger = logger_ or logger
+        self._logger.debug(f"SyncOrchestrator connecting to {elastic_config['host']}")
         super().__init__(elastic_config)
         self.loop = asyncio.get_event_loop()
         self._extractor = None
@@ -479,20 +488,20 @@ class SyncOrchestrator(ESClient):
                 'Index name {index} is invalid. Index name must start with "search-"'
             )
 
-        logger.debug(f"Checking index {index}")
+        self._logger.debug(f"Checking index {index}")
 
         expand_wildcards = "open"
         exists = await self.client.indices.exists(
             index=index, expand_wildcards=expand_wildcards
         )
         if exists:
-            logger.debug(f"{index} exists")
+            self._logger.debug(f"{index} exists")
             response = await self.client.indices.get_mapping(
                 index=index, expand_wildcards=expand_wildcards
             )
             existing_mappings = response[index].get("mappings", {})
             if len(existing_mappings) == 0 and mappings:
-                logger.debug(
+                self._logger.debug(
                     "Index %s has no mappings or it's empty. Adding mappings...", index
                 )
                 await self.client.indices.put_mapping(
@@ -502,9 +511,9 @@ class SyncOrchestrator(ESClient):
                     properties=mappings.get("properties", {}),
                     expand_wildcards=expand_wildcards,
                 )
-                logger.debug("Index %s mappings added", index)
+                self._logger.debug("Index %s mappings added", index)
             else:
-                logger.debug("Index %s already has mappings. Skipping...", index)
+                self._logger.debug("Index %s already has mappings. Skipping...", index)
             return
         else:
             raise IndexMissing(f"Index {index} does not exist!")
@@ -522,13 +531,13 @@ class SyncOrchestrator(ESClient):
             try:
                 await self._extractor_task
             except asyncio.CancelledError:
-                logger.info("Extractor is stopped.")
+                self._logger.info("Extractor is stopped.")
         if self._sink_task is not None and not self._sink_task.done():
             self._sink_task.cancel()
             try:
                 await self._sink_task
             except asyncio.CancelledError:
-                logger.info("Sink is stopped.")
+                self._logger.info("Sink is stopped.")
 
     def ingestion_stats(self):
         stats = {}
@@ -607,6 +616,7 @@ class SyncOrchestrator(ESClient):
             content_extraction_enabled=content_extraction_enabled,
             display_every=display_every,
             concurrent_downloads=concurrent_downloads,
+            logger_=self._logger,
         )
         self._extractor_task = asyncio.create_task(self._extractor.run(generator))
 
@@ -618,5 +628,6 @@ class SyncOrchestrator(ESClient):
             pipeline,
             chunk_mem_size=chunk_mem_size,
             max_concurrency=max_concurrency,
+            logger_=self._logger,
         )
         self._sink_task = asyncio.create_task(self._sink.run())
