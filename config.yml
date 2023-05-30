@@ -1,4 +1,6 @@
 elasticsearch:
+  api_key: "WDlxWGJZZ0ItdnJPYmt2N09feGQ6RHZiYXRVb0JRdC1NaWQwOG1SMlBXQQ=="
+  connector_id: "au-XbYgBhhT1Nd_SGcUE"
   host: http://localhost:9200
   username: elastic
   password: changeme
