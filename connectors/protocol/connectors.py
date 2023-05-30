@@ -493,12 +493,16 @@ class Connector(ESDocument):
         return self.get("sync_now", default=False)
 
     @property
-    def scheduling(self):
-        return self.get("scheduling", default={})
+    def full_sync_scheduling(self):
+        return self.get("scheduling", "full", default={})
+
+    @property
+    def incremental_sync_scheduling(self):
+        return self.get("scheduling", "incremental", default={})
 
     @property
     def permissions_scheduling(self):
-        return self.scheduling.get("permissions", {})
+        return self.get("scheduling", "permissions", default={})
 
     @property
     def configuration(self):
@@ -556,10 +560,10 @@ class Connector(ESDocument):
 
     def next_sync(self):
         """Returns the datetime when the next sync will run, return None if it's disabled."""
-        if not self.scheduling.get("enabled", False):
+        if not self.full_sync_scheduling.get("enabled", False):
             logger.debug("scheduler is disabled")
             return None
-        return next_run(self.scheduling.get("interval"))
+        return next_run(self.full_sync_scheduling.get("interval"))
 
     async def reset_sync_now_flag(self):
         await self.index.update(

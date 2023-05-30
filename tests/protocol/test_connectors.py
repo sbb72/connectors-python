@@ -325,6 +325,14 @@ async def test_connector_properties():
             "configuration": {},
             "language": "en",
             "scheduling": {
+                "full": {
+                    "enabled": True,
+                    "interval": "* * * * *"
+                },
+                "incremental": {
+                    "enabled": True,
+                    "interval": "* * * * *"
+                },
                 "permissions": {
                     "enabled": True,
                     "interval": "* * * * *"
@@ -352,6 +360,10 @@ async def test_connector_properties():
     assert connector.index_name == "search-some-index"
     assert connector.language == "en"
     assert connector.last_sync_status == JobStatus.COMPLETED
+    assert connector.full_sync_scheduling["enabled"]
+    assert connector.full_sync_scheduling["interval"] == "* * * * *"
+    assert connector.incremental_sync_scheduling["enabled"]
+    assert connector.incremental_sync_scheduling["interval"] == "* * * * *"
     assert connector.permissions_scheduling["enabled"]
     assert connector.permissions_scheduling["interval"] == "* * * * *"
     assert connector.sync_cursor == sync_cursor
