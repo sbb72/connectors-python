@@ -115,13 +115,14 @@ This is our main communication index, used to communicate the connector's config
   is_native: boolean;   -> Whether this is a native connector
   language: string;     -> the language used for the analyzer
   last_deleted_document_count: number;    -> How many documents were deleted in the last job
+  last_incremental_sync_scheduled_at: date; -> Date/time when the last incremental sync job is scheduled (UTC)
   last_indexed_document_count: number;    -> How many documents were indexed in the last job  
   last_seen: date;      -> Connector writes check-in date-time regularly (UTC)
   last_sync_error: string;   -> Optional last job error message
   last_sync_status: string;  -> Status of the last content sync job, or null if no job has been executed
   last_permissions_sync_status: string:  -> Status of the last permissions sync job, or null if no job has been executed
   last_synced: date;    -> Date/time of last job (UTC)
-  last_sync_scheduled_at: date;    -> Date/time when the last job is scheduled (UTC)
+  last_sync_scheduled_at: date;    -> Date/time when the last full sync job is scheduled (UTC)
   last_permissions_sync_scheduled_at: date;    -> Date/time when the last permissions sync job is scheduled (UTC)
   name: string; -> the name to use for the connector
   pipeline: {
@@ -249,6 +250,7 @@ This is our main communication index, used to communicate the connector's config
     "is_native" : { "type" : "boolean" },
     "language" : { "type" : "keyword" },
     "last_deleted_document_count" : { "type" : "long" },
+    "last_incremental_sync_scheduled_at" : { "type" : "date" },
     "last_indexed_document_count" : { "type" : "long" },
     "last_seen" : { "type" : "date" },
     "last_sync_error" : { "type" : "keyword" },
@@ -321,6 +323,7 @@ In addition to the connector index `.elastic-connectors`, we have an additional 
         run_ml_inference: boolean;
       };
       service_type: string;   -> Service type of the connector
+      sync_cursor: object;    -> The sync cursor used to start the job
     }
   ];
   created_at: date; -> The date/time when the job is created
@@ -328,6 +331,7 @@ In addition to the connector index `.elastic-connectors`, we have an additional 
   error: string; -> Optional error message
   indexed_document_count: number; -> Number of documents indexed in the job
   indexed_document_volume: number; -> The volume (in MiB) of documents indexed in the job
+  job_type; -> The job type of the sync job
   last_seen: date; -> Connector writes check-in date-time regularly (UTC)
   metadata: object; -> Connector-specific metadata
   started_at: date; -> The date/time when the job is started
@@ -346,6 +350,11 @@ In addition to the connector index `.elastic-connectors`, we have an additional 
 - `suspended` -> A job is successfully started.
 - `completed` -> A job is successfully completed.
 - `error` -> A job failed.
+
+**Possible values for `job_type`**
+- `full` -> A full sync job to sync all data.
+- `incremental` -> An incremental sync job to sync changes from the last sync job.
+- `permissions` -> A permissions sync job to sync identities.
 
 #### Elasticsearch mappings for `.elastic-connectors-sync-jobs`:
 ```
@@ -402,7 +411,8 @@ In addition to the connector index `.elastic-connectors`, we have an additional 
             "run_ml_inference" : { "type" : "boolean" }
           }
         },
-        "service_type" : { "type" : "keyword" }
+        "service_type" : { "type" : "keyword" },
+        "sync_cursor" : { "type" : "object" }
       }
     },
     "created_at" : { "type" : "date" },
@@ -410,6 +420,7 @@ In addition to the connector index `.elastic-connectors`, we have an additional 
     "error" : { "type" : "keyword" },
     "indexed_document_count" : { "type" : "integer" },
     "indexed_document_volume" : { "type" : "integer" },
+    "job_type" : { "type" : "keyword" },
     "last_seen" : { "type" : "date" },
     "metadata" : { "type" : "object" },
     "started_at" : { "type" : "date" },
