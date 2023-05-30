@@ -188,6 +188,8 @@ ADVANCED_AND_BASIC_RULES_NON_EMPTY = {
     "rules": RULES,
 }
 
+SYNC_CURSOR = {"foo": "bar"}
+
 
 def test_utc():
     # All dates are in ISO 8601 UTC so we can serialize them
@@ -316,7 +318,6 @@ async def test_all_connectors(mock_responses):
 
 @pytest.mark.asyncio
 async def test_connector_properties():
-    sync_cursor = {"foo": "bar"}
     connector_src = {
         "_id": "test",
         "_source": {
@@ -336,7 +337,7 @@ async def test_connector_properties():
             "pipeline": {},
             "last_sync_scheduled_at": iso_utc(),
             "last_permissions_sync_scheduled_at": iso_utc(),
-            "sync_cursor": sync_cursor,
+            "sync_cursor": SYNC_CURSOR,
         },
     }
 
@@ -354,7 +355,7 @@ async def test_connector_properties():
     assert connector.last_sync_status == JobStatus.COMPLETED
     assert connector.permissions_scheduling["enabled"]
     assert connector.permissions_scheduling["interval"] == "* * * * *"
-    assert connector.sync_cursor == sync_cursor
+    assert connector.sync_cursor == SYNC_CURSOR
     assert isinstance(connector.last_seen, datetime)
     assert isinstance(connector.filtering, Filtering)
     assert isinstance(connector.pipeline, Pipeline)
@@ -450,9 +451,6 @@ def mock_job(
     return job
 
 
-sync_cursor = {"foo": "bar"}
-
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "job, expected_doc_source_update",
@@ -509,7 +507,7 @@ sync_cursor = {"foo": "bar"}
                 "last_sync_error": None,
                 "status": Status.CONNECTED.value,
                 "error": None,
-                "sync_cursor": sync_cursor,
+                "sync_cursor": SYNC_CURSOR,
                 "last_indexed_document_count": 0,
                 "last_deleted_document_count": 0,
             },
@@ -522,7 +520,7 @@ async def test_sync_done(job, expected_doc_source_update):
     index.update = AsyncMock(return_value=1)
 
     connector = Connector(elastic_index=index, doc_source=connector_doc)
-    await connector.sync_done(job=job, cursor=sync_cursor)
+    await connector.sync_done(job=job, cursor=SYNC_CURSOR)
     index.update.assert_called_with(doc_id=connector.id, doc=expected_doc_source_update)
 
 
